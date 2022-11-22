@@ -198,6 +198,18 @@ namespace ICSharpCode.AvalonEdit.Highlighting
 		}
 
 		/// <summary>
+		/// Clear  highlighting definitions.
+		/// </summary>
+		public void Clear()
+		{
+			lock (lockObj) {
+				allHighlightings?.Clear();
+				highlightingsByName?.Clear();
+				highlightingsByExtension?.Clear();
+			}
+		}
+
+		/// <summary>
 		/// Registers a highlighting definition.
 		/// </summary>
 		/// <param name="name">The name to register the definition with.</param>

@@ -46,6 +46,7 @@ namespace ICSharpCode.AvalonEdit.Search
 
 		public SearchOptionsChangedEventArgs CurrentSearchEventArgs { get; set; }
 		public event Action<SearchOptionsChangedEventArgs> OnSearching;
+		public event Action OnClosed;
 
 		#region DependencyProperties
 		/// <summary>
@@ -465,6 +466,7 @@ namespace ICSharpCode.AvalonEdit.Search
 
 			// Clear existing search results so that the segments don't have to be maintained
 			renderer.CurrentResults.Clear();
+			OnClosed?.Invoke();
 		}
 
 		/// <summary>
