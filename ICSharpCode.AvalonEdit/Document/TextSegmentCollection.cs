@@ -291,6 +291,29 @@ namespace ICSharpCode.AvalonEdit.Document
 				throw new ArgumentException("segment is not inside the segment tree");
 			return (T)segment.Predecessor;
 		}
+
+		/// <summary>
+		/// 统计
+		/// </summary>
+		/// <param name="segment"></param>
+		/// <returns></returns>
+		public long GetPreviousCount(T segment)
+		{
+			if (!Contains(segment))
+				throw new ArgumentException("segment is not inside the segment tree");
+			long count = 0;
+			T t = GetPreviousSegment(segment);
+			while (t != null) {
+				t = GetPreviousSegment(t);
+				count++;
+				if (t == null)
+					break;
+			}
+			return count + 1;
+		}
+
+
+
 		#endregion
 
 		#region FirstSegment/LastSegment

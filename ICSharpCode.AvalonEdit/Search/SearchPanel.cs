@@ -48,6 +48,33 @@ namespace ICSharpCode.AvalonEdit.Search
 		public event Action<SearchOptionsChangedEventArgs> OnSearching;
 		public event Action OnClosed;
 
+
+
+		private long _SearchSelectIndex;
+		public long SearchSelectIndex {
+			get { return _SearchSelectIndex; }
+			set {
+				_SearchSelectIndex = value;
+				if (SearchResultTextBlock != null)
+					SearchResultTextBlock.Text = $"{value} of {SearchTotalCount}";
+				//else
+				//	MessageBox.Show("SearchResultTextBlock is NULL in set");
+
+			}
+		}
+		private long _SearchTotalCount;
+		public long SearchTotalCount {
+			get { return _SearchTotalCount; }
+			set {
+				_SearchTotalCount = value;
+				if (SearchResultTextBlock != null)
+					SearchResultTextBlock.Text = $"{_SearchSelectIndex} of {value}";
+				//else
+				//	MessageBox.Show("SearchResultTextBlock is NULL in set");
+			}
+		}
+		public TextBlock SearchResultTextBlock;
+
 		#region DependencyProperties
 		/// <summary>
 		/// Dependency property for <see cref="UseRegex"/>.
@@ -212,8 +239,8 @@ namespace ICSharpCode.AvalonEdit.Search
 			// only reset as long as there are results
 			// if no results are found, the "no matches found" message should not flicker.
 			// if results are found by the next run, the message will be hidden inside DoSearch ...
-			if (renderer.CurrentResults.Any())
-				messageView.IsOpen = false;
+			//if (renderer.CurrentResults.Any())
+			//	messageView.IsOpen = false;
 			strategy = SearchStrategyFactory.Create(SearchPattern ?? "", !MatchCase, WholeWords, UseRegex ? SearchMode.RegEx : SearchMode.Normal);
 			CurrentSearchEventArgs = new SearchOptionsChangedEventArgs(SearchPattern, MatchCase, UseRegex, WholeWords);
 			OnSearchOptionsChanged(CurrentSearchEventArgs);
@@ -314,6 +341,7 @@ namespace ICSharpCode.AvalonEdit.Search
 
 			searchTextBox = Template.FindName("PART_searchTextBox", this) as TextBox;
 			dropdownPopup = Template.FindName("PART_dropdownPopup", this) as Popup;
+			SearchResultTextBlock = Template.FindName("SearchResultTextBlock", this) as TextBlock;
 		}
 
 		void ValidateSearchText()
@@ -352,10 +380,19 @@ namespace ICSharpCode.AvalonEdit.Search
 		public void FindNext()
 		{
 			SearchResult result = renderer.CurrentResults.FindFirstSegmentWithStartAfter(textArea.Caret.Offset + 1);
-			if (result == null)
+			bool toFirst = false;
+			if (result == null) {
 				result = renderer.CurrentResults.FirstSegment;
+				toFirst = true;
+			}
+
 			if (result != null) {
 				SelectResult(result);
+				if (toFirst)
+					SearchSelectIndex = 1;
+				else {
+					SearchSelectIndex = renderer.CurrentResults.GetPreviousCount(result);
+				}
 			}
 		}
 
@@ -365,44 +402,60 @@ namespace ICSharpCode.AvalonEdit.Search
 		public void FindPrevious()
 		{
 			SearchResult result = renderer.CurrentResults.FindFirstSegmentWithStartAfter(textArea.Caret.Offset);
-			if (result != null)
+			if (result != null) {
 				result = renderer.CurrentResults.GetPreviousSegment(result);
-			if (result == null)
+				SearchSelectIndex--;
+			}
+			if (result == null) {
 				result = renderer.CurrentResults.LastSegment;
+				SearchSelectIndex = renderer.CurrentResults.Count;
+			}
 			if (result != null) {
 				SelectResult(result);
 			}
 		}
 
-		ToolTip messageView = new ToolTip { Placement = PlacementMode.Bottom, StaysOpen = true, Focusable = false };
+		//ToolTip messageView = new ToolTip { Placement = PlacementMode.Bottom, StaysOpen = true, Focusable = false };
 
 		void DoSearch(bool changeSelection)
 		{
 			if (IsClosed)
 				return;
 			renderer.CurrentResults.Clear();
-
+			bool change = changeSelection;
 			if (!string.IsNullOrEmpty(SearchPattern)) {
 				int offset = textArea.Caret.Offset;
 				if (changeSelection) {
 					textArea.ClearSelection();
 				}
 				// We cast from ISearchResult to SearchResult; this is safe because we always use the built-in strategy
+				//SearchSelectIndex = 0;
+				long count = 0;
 				foreach (SearchResult result in strategy.FindAll(textArea.Document, 0, textArea.Document.TextLength)) {
 					if (changeSelection && result.StartOffset >= offset) {
 						SelectResult(result);
 						changeSelection = false;
+						SearchSelectIndex = count + 1;
 					}
 					renderer.CurrentResults.Add(result);
+					count++;
 				}
 				if (!renderer.CurrentResults.Any()) {
-					messageView.IsOpen = true;
-					messageView.Content = Localization.NoMatchesFoundText;
-					messageView.PlacementTarget = searchTextBox;
+					// messageView.IsOpen = true;
+					// messageView.Content = Localization.NoMatchesFoundText;
+					// messageView.PlacementTarget = searchTextBox;
+					SearchSelectIndex = 0;
+					SearchTotalCount = 0;
+					if (SearchResultTextBlock != null)
+						SearchResultTextBlock.Text = "无结果";
 				} else {
-					messageView.IsOpen = false;
+					// messageView.IsOpen = false;
 					OnSearching?.Invoke(CurrentSearchEventArgs);
+					SearchTotalCount = renderer.CurrentResults.Count;
+					if (!change && SearchResultTextBlock != null)
+						SearchResultTextBlock.Text = "-";
 				}
+
 			}
 			textArea.TextView.InvalidateLayer(KnownLayer.Selection);
 		}
@@ -425,14 +478,14 @@ namespace ICSharpCode.AvalonEdit.Search
 						FindPrevious();
 					else
 						FindNext();
-					if (searchTextBox != null) {
-						var error = Validation.GetErrors(searchTextBox).FirstOrDefault();
-						if (error != null) {
-							messageView.Content = Localization.ErrorText + " " + error.ErrorContent;
-							messageView.PlacementTarget = searchTextBox;
-							messageView.IsOpen = true;
-						}
-					}
+					//if (searchTextBox != null) {
+					//	var error = Validation.GetErrors(searchTextBox).FirstOrDefault();
+					//	if (error != null) {
+					//		messageView.Content = Localization.ErrorText + " " + error.ErrorContent;
+					//		messageView.PlacementTarget = searchTextBox;
+					//		messageView.IsOpen = true;
+					//	}
+					//}
 					break;
 				case Key.Escape:
 					e.Handled = true;
@@ -458,7 +511,7 @@ namespace ICSharpCode.AvalonEdit.Search
 				layer.Remove(adorner);
 			if (dropdownPopup != null)
 				dropdownPopup.IsOpen = false;
-			messageView.IsOpen = false;
+			//messageView.IsOpen = false;
 			textArea.TextView.BackgroundRenderers.Remove(renderer);
 			if (hasFocus)
 				textArea.Focus();
