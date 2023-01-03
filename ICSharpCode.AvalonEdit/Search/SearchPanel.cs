@@ -18,6 +18,7 @@
 
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -49,7 +50,9 @@ namespace ICSharpCode.AvalonEdit.Search
 		public event Action OnClosed;
 
 
-
+		/// <summary>
+		/// 当前搜选内容位于所有搜索结果的下标
+		/// </summary>
 		private long _SearchSelectIndex;
 		public long SearchSelectIndex {
 			get { return _SearchSelectIndex; }
@@ -57,9 +60,6 @@ namespace ICSharpCode.AvalonEdit.Search
 				_SearchSelectIndex = value;
 				if (SearchResultTextBlock != null)
 					SearchResultTextBlock.Text = $"{value} of {SearchTotalCount}";
-				//else
-				//	MessageBox.Show("SearchResultTextBlock is NULL in set");
-
 			}
 		}
 		private long _SearchTotalCount;
@@ -69,11 +69,10 @@ namespace ICSharpCode.AvalonEdit.Search
 				_SearchTotalCount = value;
 				if (SearchResultTextBlock != null)
 					SearchResultTextBlock.Text = $"{_SearchSelectIndex} of {value}";
-				//else
-				//	MessageBox.Show("SearchResultTextBlock is NULL in set");
 			}
 		}
 		public TextBlock SearchResultTextBlock;
+		public Button SearchAllButton;
 
 		#region DependencyProperties
 		/// <summary>
@@ -89,6 +88,21 @@ namespace ICSharpCode.AvalonEdit.Search
 		public bool UseRegex {
 			get { return (bool)GetValue(UseRegexProperty); }
 			set { SetValue(UseRegexProperty, value); }
+		}
+
+		/// <summary>
+		/// Dependency property for <see cref="LoadingVisibility"/>.
+		/// </summary>
+		public static readonly DependencyProperty LoadingVisibilityProperty =
+			DependencyProperty.Register("LoadingVisibility", typeof(Visibility), typeof(SearchPanel),
+										new FrameworkPropertyMetadata(Visibility.Collapsed));
+
+		/// <summary>
+		/// Gets/sets whether the search pattern should be interpreted as regular expression.
+		/// </summary>
+		public Visibility LoadingVisibility {
+			get { return (Visibility)GetValue(LoadingVisibilityProperty); }
+			set { SetValue(LoadingVisibilityProperty, value); }
 		}
 
 		/// <summary>
@@ -245,6 +259,10 @@ namespace ICSharpCode.AvalonEdit.Search
 			CurrentSearchEventArgs = new SearchOptionsChangedEventArgs(SearchPattern, MatchCase, UseRegex, WholeWords);
 			OnSearchOptionsChanged(CurrentSearchEventArgs);
 			DoSearch(true);
+			Task.Run(async () => {
+				await Task.Delay(100);
+				Dispatcher.Invoke(() => SetSearchSelectIndex(textArea.Caret.Offset - textArea.Selection.Length));
+			});
 		}
 
 		/// <summary>
@@ -342,6 +360,27 @@ namespace ICSharpCode.AvalonEdit.Search
 			searchTextBox = Template.FindName("PART_searchTextBox", this) as TextBox;
 			dropdownPopup = Template.FindName("PART_dropdownPopup", this) as Popup;
 			SearchResultTextBlock = Template.FindName("SearchResultTextBlock", this) as TextBlock;
+			//SearchAllButton = Template.FindName("SearchAllButton", this) as Button;
+			//if (SearchAllButton != null) {
+			//	SearchAllButton.Click += SearchAllButton_Click;
+			//}
+		}
+
+		/// <summary>
+		/// 查找所有结果
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
+		private void SearchAllButton_Click(object sender, RoutedEventArgs e)
+		{
+			//if (renderer == null || renderer.CurrentResults == null || renderer.CurrentResults.Count == 0) {
+			//	return;
+			//}
+			//LoadingVisibility = Visibility.Visible;
+
+
+
+			//LoadingVisibility = Visibility.Collapsed;
 		}
 
 		void ValidateSearchText()
@@ -417,6 +456,11 @@ namespace ICSharpCode.AvalonEdit.Search
 
 		//ToolTip messageView = new ToolTip { Placement = PlacementMode.Bottom, StaysOpen = true, Focusable = false };
 
+
+		/// <summary>
+		/// 搜索结果
+		/// </summary>
+		/// <param name="changeSelection">是否改变当前选中项的选中样式</param>
 		void DoSearch(bool changeSelection)
 		{
 			if (IsClosed)
@@ -440,6 +484,7 @@ namespace ICSharpCode.AvalonEdit.Search
 					renderer.CurrentResults.Add(result);
 					count++;
 				}
+				//MessageBox.Show(renderer.CurrentResults.Count.ToString());
 				if (!renderer.CurrentResults.Any()) {
 					// messageView.IsOpen = true;
 					// messageView.Content = Localization.NoMatchesFoundText;
@@ -451,13 +496,23 @@ namespace ICSharpCode.AvalonEdit.Search
 				} else {
 					// messageView.IsOpen = false;
 					OnSearching?.Invoke(CurrentSearchEventArgs);
-					SearchTotalCount = renderer.CurrentResults.Count;
-					if (!change && SearchResultTextBlock != null)
-						SearchResultTextBlock.Text = "-";
+					SetSearchSelectIndex(textArea.Caret.Offset);
 				}
 
 			}
 			textArea.TextView.InvalidateLayer(KnownLayer.Selection);
+		}
+
+		private void SetSearchSelectIndex(int offset)
+		{
+			if (renderer == null || renderer?.CurrentResults == null)
+				SearchTotalCount = 0;
+			else
+				SearchTotalCount = renderer.CurrentResults.Count;
+			SearchResult result = renderer.CurrentResults.FindFirstSegmentWithStartAfter(offset);
+			if (result != null) {
+				SearchSelectIndex = renderer.CurrentResults.GetPreviousCount(result);
+			}
 		}
 
 		void SelectResult(SearchResult result)
@@ -534,6 +589,10 @@ namespace ICSharpCode.AvalonEdit.Search
 			textArea.TextView.BackgroundRenderers.Add(renderer);
 			IsClosed = false;
 			DoSearch(false);
+			Task.Run(async () => {
+				await Task.Delay(100);
+				Dispatcher.Invoke(() => SetSearchSelectIndex(textArea.Caret.Offset - textArea.Selection.Length));
+			});
 		}
 
 		/// <summary>

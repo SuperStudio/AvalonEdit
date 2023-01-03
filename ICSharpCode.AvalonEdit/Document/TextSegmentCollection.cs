@@ -300,7 +300,7 @@ namespace ICSharpCode.AvalonEdit.Document
 		public long GetPreviousCount(T segment)
 		{
 			if (!Contains(segment))
-				throw new ArgumentException("segment is not inside the segment tree");
+				return 0;
 			long count = 0;
 			T t = GetPreviousSegment(segment);
 			while (t != null) {
