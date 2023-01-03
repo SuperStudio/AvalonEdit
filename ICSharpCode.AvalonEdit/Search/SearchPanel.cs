@@ -491,8 +491,6 @@ namespace ICSharpCode.AvalonEdit.Search
 					// messageView.PlacementTarget = searchTextBox;
 					SearchSelectIndex = 0;
 					SearchTotalCount = 0;
-					if (SearchResultTextBlock != null)
-						SearchResultTextBlock.Text = "无结果";
 				} else {
 					// messageView.IsOpen = false;
 					OnSearching?.Invoke(CurrentSearchEventArgs);
