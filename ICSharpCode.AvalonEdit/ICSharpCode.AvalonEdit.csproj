@@ -66,4 +66,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="XCOPY  &quot;$(ProjectDir)bin\Release\net462\ICSharpCode.AvalonEdit.dll&quot; &quot;D:\SuperStudio\SuperCom\SuperCom\References&quot;    /E /Y /i" />
+  </Target>
 </Project>

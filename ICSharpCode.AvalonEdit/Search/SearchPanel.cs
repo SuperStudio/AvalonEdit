@@ -69,6 +69,8 @@ namespace ICSharpCode.AvalonEdit.Search
 				_SearchTotalCount = value;
 				if (SearchResultTextBlock != null)
 					SearchResultTextBlock.Text = $"{_SearchSelectIndex} of {value}";
+				if (value == 0)
+					SearchSelectIndex = 0;
 			}
 		}
 		public TextBlock SearchResultTextBlock;
@@ -435,6 +437,11 @@ namespace ICSharpCode.AvalonEdit.Search
 			}
 		}
 
+		public void HighLightSelected()
+		{
+			DoSearch(false);
+		}
+
 		/// <summary>
 		/// Moves to the previous occurrence in the file.
 		/// </summary>
@@ -489,7 +496,6 @@ namespace ICSharpCode.AvalonEdit.Search
 					// messageView.IsOpen = true;
 					// messageView.Content = Localization.NoMatchesFoundText;
 					// messageView.PlacementTarget = searchTextBox;
-					SearchSelectIndex = 0;
 					SearchTotalCount = 0;
 				} else {
 					// messageView.IsOpen = false;
@@ -503,6 +509,7 @@ namespace ICSharpCode.AvalonEdit.Search
 
 		private void SetSearchSelectIndex(int offset)
 		{
+			SearchSelectIndex = 0;
 			if (renderer == null || renderer?.CurrentResults == null)
 				SearchTotalCount = 0;
 			else
